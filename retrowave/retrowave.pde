@@ -1,12 +1,26 @@
-import processing.sound.*;
+//import processing.sound.*;
+import ddf.minim.*;
+import ddf.minim.effects.*;
+import ddf.minim.ugens.*;
+import ddf.minim.analysis.*;
+import ddf.minim.signals.*;
+ 
 
 Cube spaceship, shot;
 
+Minim minim;
+
+AudioInput IN;
+AudioRecorder recorder;
+AudioOutput OUT;
+FilePlayer player;
+LowPassSP lpf;
+
 PImage bg, logo, spaceship_texture, shot_texture;
 PFont font;
-SoundFile sound;
 PShape octopus, crab, squid;
-boolean cam;
+//SoundFile soundtrack;
+boolean cam, sound, st;
 int x, y;
 
 void setup(){
@@ -19,18 +33,22 @@ void setup(){
   
   font = createFont("SFAlienEncounters-Italic.ttf", 52);
   
-  sound = new SoundFile(this, "soundtrack.wav");
-  
   crab = loadShape("Space_Invader_1.obj");
   octopus = loadShape("Space_Invader_2.obj");
   squid = loadShape("Space_Invader_3.obj");
+  
+  //soundtrack = new SoundFile(this, "soundtrack.wav");
   
   shot = new Cube(8, 30, 5, width/2 + 300, height/2 + 130, 0, shot_texture);
   spaceship = new Cube(80, 30, 15, width/2 + 300, height/2 + 340, 0, spaceship_texture);
   
   cam = false;
+  sound = false; 
+  st = false;
   
-  thread("sfx");
+  minim = new Minim(this);
+  
+  OUT = minim.getLineOut(Minim.STEREO);
 }
 
 void draw(){
@@ -56,11 +74,13 @@ void draw(){
   logo.resize(80, 70);
   image(logo, width/2 + 380, height/2 - 360);
   
-   if(!cam){
+  if(!cam){
     defaultCamera();
   }else{
     modeCamera();
   }
+  
+  keysPiano();
 }
 
 void defaultCamera(){
@@ -72,25 +92,25 @@ void modeCamera(){
 }
 
 void keyPressed(){
-   if(keyPressed){
-     if(key == 'a'){
-       x -= 20;
-     }else if (key == 'd'){
-       x += 20;
-    }else if (key == 'w'){
-       y += 20;
-    }else if (key == 's'){
-       y -= 20;
-    }else if (key == 'p'){
-      cam = true;
-    } else if (key == 'o'){
-      cam = false;
-    }
+  switch(key) {
+    case 'a': x -= 20; break;
+    case 'd': x += 20; break;
+    case 'w': y += 20; break;
+    case 's': y -= 20; break;
+    case 'p': cam = true; break;
+    case 'o': cam = false; break;
+    case 'f': sound = true; break;
+    case 'x': sound = false; break;
+    case 'n': st = !st; break;
+    case 'e': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("A3").asHz())); break;
+    case 'r': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("B3").asHz())); break;
+    case 't': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("C4").asHz())); break;
+    case 'y': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("D4").asHz())); break;
+    case 'u': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("E4").asHz())); break;
+    case 'i': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("F4").asHz())); break;
+    case 'k': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("G4").asHz())); break;
+    case 'l': OUT.playNote( 0.0, 0.9, new SineInstrument(Frequency.ofPitch("A4").asHz())); break;
   }
-}
-
-void sfx(){
-  sound.loop();
 }
 
 void showCrab(){
@@ -128,6 +148,22 @@ void showSquid(){
   }
 }
 
+void keysPiano(){
+  if(sound){
+    textFont(font, 32);
+    text("X", 160, height/2 - 250);
+    text("E", 160 + 120, height/2 - 250);
+    text("R", 160 + 240, height/2 - 250);
+    text("T", 160 + 360, height/2 - 250);
+    text("Y", 160 + 480, height/2 - 250);
+    text("U", 160 + 600, height/2 - 250);
+    text("I", 160 + 720, height/2 - 250);
+    text("K", 160 + 840, height/2 - 250);
+    text("L", 160 + 960, height/2 - 250);
+    //text("N", 160 + 1080, height/2 - 250);
+  }
+}
+
 void title(){
   smooth();
   textFont(font, 82);
@@ -141,14 +177,42 @@ void title(){
 }
 
 void instructions(){
-  textFont(font, 24);
+  textFont(font, 20);
   stroke(0);
   fill(36, 223, 253);
-  text("Camera mode", width/2 - 680, height/2 + 340);
-  if(!cam){
-    text("Press P to use the camera mode", width/2 - 680, height/2 + 380);
+  if(!cam && !sound){
+    text("Mode", width/2 - 680, height/2 + 330);
+    text("Press P - Camera mode", width/2 - 680, height/2 + 360);
+    text("Press F - Sound mode", width/2 - 680, height/2 + 390);
   }else{
-    text("Press A/D/W/S to move the camera", width/2 - 680, height/2 + 370);
-    text("Press O to use the default view", width/2 - 680, height/2 + 390);
+    if(cam){
+      text("Press A/D/W/S to move the camera", width/2 - 680, height/2 + 360);
+      text("Press O to use the default view", width/2 - 680, height/2 + 390);
+    }
+    if(sound){
+      text("Press keys E/R/T/Y/U/I/K/L to play piano", width/2 - 680, height/2 + 330);
+      text("Press N to play and stop soundtrack", width/2 - 680, height/2 + 360);
+      text("Press X to back", width/2 - 680, height/2 + 390);
+    }
+  }
+}
+
+class SineInstrument implements Instrument{
+  Oscil wave;
+  Line  ampEnv;
+  
+  SineInstrument(float frequency){
+    wave   = new Oscil( frequency, 0, Waves.SINE );
+    ampEnv = new Line();
+    ampEnv.patch( wave.amplitude );
+  }
+  
+  void noteOn(float duration){
+    ampEnv.activate( duration, 0.5f, 0 );
+    wave.patch(OUT);
+  }
+  
+  void noteOff(){
+    wave.unpatch(OUT);
   }
 }
